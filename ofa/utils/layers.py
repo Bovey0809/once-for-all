@@ -110,7 +110,7 @@ class My2DLayer(MyModule):
                 return True
             elif op == "weight":
                 return False
-        raise ValueError("Invalid ops_order: %s" % self.ops_order)
+        raise ValueError(f"Invalid ops_order: {self.ops_order}")
 
     def weight_op(self):
         raise NotImplementedError
@@ -209,23 +209,24 @@ class ConvLayer(My2DLayer):
         else:
             kernel_size = self.kernel_size
         if self.groups == 1:
-            if self.dilation > 1:
-                conv_str = "%dx%d_DilatedConv" % (kernel_size[0], kernel_size[1])
-            else:
-                conv_str = "%dx%d_Conv" % (kernel_size[0], kernel_size[1])
+            conv_str = (
+                "%dx%d_DilatedConv" % (kernel_size[0], kernel_size[1])
+                if self.dilation > 1
+                else "%dx%d_Conv" % (kernel_size[0], kernel_size[1])
+            )
+        elif self.dilation > 1:
+            conv_str = "%dx%d_DilatedGroupConv" % (kernel_size[0], kernel_size[1])
         else:
-            if self.dilation > 1:
-                conv_str = "%dx%d_DilatedGroupConv" % (kernel_size[0], kernel_size[1])
-            else:
-                conv_str = "%dx%d_GroupConv" % (kernel_size[0], kernel_size[1])
+            conv_str = "%dx%d_GroupConv" % (kernel_size[0], kernel_size[1])
         conv_str += "_O%d" % self.out_channels
         if self.use_se:
-            conv_str = "SE_" + conv_str
-        conv_str += "_" + self.act_func.upper()
-        if self.use_bn:
-            if isinstance(self.bn, nn.GroupNorm):
+            conv_str = f"SE_{conv_str}"
+        conv_str += f"_{self.act_func.upper()}"
+        if isinstance(self.bn, nn.GroupNorm):
+            if self.use_bn:
                 conv_str += "_GN%d" % self.bn.num_groups
-            elif isinstance(self.bn, nn.BatchNorm2d):
+        elif isinstance(self.bn, nn.BatchNorm2d):
+            if self.use_bn:
                 conv_str += "_BN"
         return conv_str
 
@@ -348,7 +349,7 @@ class LinearLayer(MyModule):
                 return True
             elif op == "weight":
                 return False
-        raise ValueError("Invalid ops_order: %s" % self.ops_order)
+        raise ValueError(f"Invalid ops_order: {self.ops_order}")
 
     def forward(self, x):
         for module in self._modules.values():
@@ -395,7 +396,7 @@ class MultiHeadLinearLayer(MyModule):
             self.dropout = None
 
         self.layers = nn.ModuleList()
-        for k in range(num_heads):
+        for _ in range(num_heads):
             layer = nn.Linear(in_features, out_features, self.bias)
             self.layers.append(layer)
 
@@ -408,8 +409,7 @@ class MultiHeadLinearLayer(MyModule):
             output = layer.forward(inputs)
             outputs.append(output)
 
-        outputs = torch.stack(outputs, dim=1)
-        return outputs
+        return torch.stack(outputs, dim=1)
 
     @property
     def module_str(self):
@@ -569,7 +569,7 @@ class MBConvLayer(MyModule):
             self.act_func.upper(),
         )
         if self.use_se:
-            layer_str = "SE_" + layer_str
+            layer_str = f"SE_{layer_str}"
         layer_str += "_O%d" % self.out_channels
         if self.groups is not None:
             layer_str += "_G%d" % self.groups
@@ -609,19 +609,15 @@ class ResidualBlock(MyModule):
 
     def forward(self, x):
         if self.conv is None or isinstance(self.conv, ZeroLayer):
-            res = x
+            return x
         elif self.shortcut is None or isinstance(self.shortcut, ZeroLayer):
-            res = self.conv(x)
+            return self.conv(x)
         else:
-            res = self.conv(x) + self.shortcut(x)
-        return res
+            return self.conv(x) + self.shortcut(x)
 
     @property
     def module_str(self):
-        return "(%s, %s)" % (
-            self.conv.module_str if self.conv is not None else None,
-            self.shortcut.module_str if self.shortcut is not None else None,
-        )
+        return f"({self.conv.module_str if self.conv is not None else None}, {self.shortcut.module_str if self.shortcut is not None else None})"
 
     @property
     def config(self):

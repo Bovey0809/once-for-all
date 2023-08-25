@@ -126,12 +126,10 @@ class OFAResNets(ResNets):
     def forward(self, x):
         for layer in self.input_stem:
             if (
-                self.input_stem_skipping > 0
-                and isinstance(layer, ResidualBlock)
-                and isinstance(layer.shortcut, IdentityLayer)
+                self.input_stem_skipping <= 0
+                or not isinstance(layer, ResidualBlock)
+                or not isinstance(layer.shortcut, IdentityLayer)
             ):
-                pass
-            else:
                 x = layer(x)
         x = self.max_pooling(x)
         for stage_id, block_idx in enumerate(self.grouped_block_index):
@@ -145,17 +143,16 @@ class OFAResNets(ResNets):
 
     @property
     def module_str(self):
-        _str = ""
-        for layer in self.input_stem:
-            if (
-                self.input_stem_skipping > 0
-                and isinstance(layer, ResidualBlock)
-                and isinstance(layer.shortcut, IdentityLayer)
-            ):
-                pass
-            else:
-                _str += layer.module_str + "\n"
-        _str += "max_pooling(ks=3, stride=2)\n"
+        _str = (
+            "".join(
+                layer.module_str + "\n"
+                for layer in self.input_stem
+                if self.input_stem_skipping <= 0
+                or not isinstance(layer, ResidualBlock)
+                or not isinstance(layer.shortcut, IdentityLayer)
+            )
+            + "max_pooling(ks=3, stride=2)\n"
+        )
         for stage_id, block_idx in enumerate(self.grouped_block_index):
             depth_param = self.runtime_depth[stage_id]
             active_idx = block_idx[: len(block_idx) - depth_param]
@@ -193,7 +190,7 @@ class OFAResNets(ResNets):
                 new_key = new_key.replace("conv.weight", "conv.conv.weight")
             else:
                 raise ValueError(new_key)
-            assert new_key in model_dict, "%s" % new_key
+            assert new_key in model_dict, f"{new_key}"
             model_dict[new_key] = state_dict[key]
         super(OFAResNets, self).load_state_dict(model_dict)
 
@@ -238,22 +235,21 @@ class OFAResNets(ResNets):
                     ].out_channel_list[w]
 
     def sample_active_subnet(self):
-        # sample expand ratio
-        expand_setting = []
-        for block in self.blocks:
-            expand_setting.append(random.choice(block.expand_ratio_list))
-
+        expand_setting = [
+            random.choice(block.expand_ratio_list) for block in self.blocks
+        ]
         # sample depth
         depth_setting = [random.choice([max(self.depth_list), min(self.depth_list)])]
-        for stage_id in range(len(ResNets.BASE_DEPTH_LIST)):
-            depth_setting.append(random.choice(self.depth_list))
-
+        depth_setting.extend(
+            random.choice(self.depth_list)
+            for _ in range(len(ResNets.BASE_DEPTH_LIST))
+        )
         # sample width_mult
         width_mult_setting = [
             random.choice(list(range(len(self.input_stem[0].out_channel_list)))),
             random.choice(list(range(len(self.input_stem[2].out_channel_list)))),
         ]
-        for stage_id, block_idx in enumerate(self.grouped_block_index):
+        for block_idx in self.grouped_block_index:
             stage_first_block = self.blocks[block_idx[0]]
             width_mult_setting.append(
                 random.choice(list(range(len(stage_first_block.out_channel_list))))

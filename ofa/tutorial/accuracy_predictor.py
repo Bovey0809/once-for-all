@@ -8,7 +8,7 @@ from ofa.utils import download_url
 
 # Helper for constructing the one-hot vectors.
 def construct_maps(keys):
-    d = dict()
+    d = {}
     keys = list(set(keys))
     for k in keys:
         if k not in d:
@@ -60,8 +60,7 @@ class AccuracyPredictor:
             )
             all_feats.append(feats)
         all_feats = torch.cat(all_feats, 0)
-        pred = self.model(all_feats).cpu()
-        return pred
+        return self.model(all_feats).cpu()
 
     @staticmethod
     def spec2feats(ks_list, ex_list, d_list, r):

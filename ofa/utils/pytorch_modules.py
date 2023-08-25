@@ -56,7 +56,7 @@ def build_activation(act_func, inplace=True):
     elif act_func is None or act_func == "none":
         return None
     else:
-        raise ValueError("do not support: %s" % act_func)
+        raise ValueError(f"do not support: {act_func}")
 
 
 class ShuffleLayer(nn.Module):
@@ -87,7 +87,7 @@ class MyGlobalAvgPool2d(nn.Module):
         return x.mean(3, keepdim=self.keep_dim).mean(2, keepdim=self.keep_dim)
 
     def __repr__(self):
-        return "MyGlobalAvgPool2d(keep_dim=%s)" % self.keep_dim
+        return f"MyGlobalAvgPool2d(keep_dim={self.keep_dim})"
 
 
 class Hswish(nn.Module):
@@ -155,7 +155,7 @@ class MultiHeadCrossEntropyLoss(nn.Module):
         assert outputs.size(1) == targets.size(1), (outputs, targets)
         num_heads = targets.size(1)
 
-        loss = 0
-        for k in range(num_heads):
-            loss += F.cross_entropy(outputs[:, k, :], targets[:, k]) / num_heads
-        return loss
+        return sum(
+            F.cross_entropy(outputs[:, k, :], targets[:, k]) / num_heads
+            for k in range(num_heads)
+        )

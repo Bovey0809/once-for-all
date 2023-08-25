@@ -48,7 +48,7 @@ def profile(model, input_size, custom_ops=None):
     custom_ops = {} if custom_ops is None else custom_ops
 
     def add_hooks(m_):
-        if len(list(m_.children())) > 0:
+        if list(m_.children()):
             return
 
         m_.register_buffer("total_ops", torch.zeros(1))
@@ -82,7 +82,7 @@ def profile(model, input_size, custom_ops=None):
     total_ops = 0
     total_params = 0
     for m in model.modules():
-        if len(list(m.children())) > 0:  # skip for non-leaf module
+        if list(m.children()):  # skip for non-leaf module
             continue
         total_ops += m.total_ops
         total_params += m.total_params

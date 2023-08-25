@@ -47,8 +47,7 @@ class DynamicSeparableConv2d(nn.Module):
             bias=False,
         )
 
-        self._ks_set = list(set(self.kernel_size_list))
-        self._ks_set.sort()  # e.g., [3, 5, 7]
+        self._ks_set = sorted(set(self.kernel_size_list))
         if self.KERNEL_TRANSFORM_MODE is not None:
             # register scaling parameters
             # 7to5_matrix, 5to3_matrix
@@ -58,8 +57,8 @@ class DynamicSeparableConv2d(nn.Module):
                 ks_larger = self._ks_set[i + 1]
                 param_name = "%dto%d" % (ks_larger, ks_small)
                 # noinspection PyArgumentList
-                scale_params["%s_matrix" % param_name] = Parameter(
-                    torch.eye(ks_small ** 2)
+                scale_params[f"{param_name}_matrix"] = Parameter(
+                    torch.eye(ks_small**2)
                 )
             for name, param in scale_params.items():
                 self.register_parameter(name, param)
@@ -115,8 +114,9 @@ class DynamicSeparableConv2d(nn.Module):
             if isinstance(self.conv, MyConv2d)
             else filters
         )
-        y = F.conv2d(x, filters, None, self.stride, padding, self.dilation, in_channel)
-        return y
+        return F.conv2d(
+            x, filters, None, self.stride, padding, self.dilation, in_channel
+        )
 
 
 class DynamicConv2d(nn.Module):
@@ -156,8 +156,7 @@ class DynamicConv2d(nn.Module):
             if isinstance(self.conv, MyConv2d)
             else filters
         )
-        y = F.conv2d(x, filters, None, self.stride, padding, self.dilation, 1)
-        return y
+        return F.conv2d(x, filters, None, self.stride, padding, self.dilation, 1)
 
 
 class DynamicGroupConv2d(nn.Module):
@@ -220,7 +219,7 @@ class DynamicGroupConv2d(nn.Module):
             if isinstance(self.conv, MyConv2d)
             else filters
         )
-        y = F.conv2d(
+        return F.conv2d(
             x,
             filters,
             None,
@@ -229,7 +228,6 @@ class DynamicGroupConv2d(nn.Module):
             self.dilation,
             groups,
         )
-        return y
 
 
 class DynamicBatchNorm2d(nn.Module):
@@ -245,31 +243,30 @@ class DynamicBatchNorm2d(nn.Module):
     def bn_forward(x, bn: nn.BatchNorm2d, feature_dim):
         if bn.num_features == feature_dim or DynamicBatchNorm2d.SET_RUNNING_STATISTICS:
             return bn(x)
-        else:
-            exponential_average_factor = 0.0
+        exponential_average_factor = 0.0
 
-            if bn.training and bn.track_running_stats:
-                if bn.num_batches_tracked is not None:
-                    bn.num_batches_tracked += 1
-                    if bn.momentum is None:  # use cumulative moving average
-                        exponential_average_factor = 1.0 / float(bn.num_batches_tracked)
-                    else:  # use exponential moving average
-                        exponential_average_factor = bn.momentum
-            return F.batch_norm(
-                x,
-                bn.running_mean[:feature_dim],
-                bn.running_var[:feature_dim],
-                bn.weight[:feature_dim],
-                bn.bias[:feature_dim],
-                bn.training or not bn.track_running_stats,
-                exponential_average_factor,
-                bn.eps,
-            )
+        if bn.training and bn.track_running_stats:
+            if bn.num_batches_tracked is not None:
+                bn.num_batches_tracked += 1
+                exponential_average_factor = (
+                    1.0 / float(bn.num_batches_tracked)
+                    if bn.momentum is None
+                    else bn.momentum
+                )
+        return F.batch_norm(
+            x,
+            bn.running_mean[:feature_dim],
+            bn.running_var[:feature_dim],
+            bn.weight[:feature_dim],
+            bn.bias[:feature_dim],
+            bn.training or not bn.track_running_stats,
+            exponential_average_factor,
+            bn.eps,
+        )
 
     def forward(self, x):
         feature_dim = x.size(1)
-        y = self.bn_forward(x, self.bn, feature_dim)
-        return y
+        return self.bn_forward(x, self.bn, feature_dim)
 
 
 class DynamicGroupNorm(nn.GroupNorm):
@@ -298,16 +295,15 @@ class DynamicSE(SEModule):
     def get_active_reduce_weight(self, num_mid, in_channel, groups=None):
         if groups is None or groups == 1:
             return self.fc.reduce.weight[:num_mid, :in_channel, :, :]
-        else:
-            assert in_channel % groups == 0
-            sub_in_channels = in_channel // groups
-            sub_filters = torch.chunk(
-                self.fc.reduce.weight[:num_mid, :, :, :], groups, dim=1
-            )
-            return torch.cat(
-                [sub_filter[:, :sub_in_channels, :, :] for sub_filter in sub_filters],
-                dim=1,
-            )
+        assert in_channel % groups == 0
+        sub_in_channels = in_channel // groups
+        sub_filters = torch.chunk(
+            self.fc.reduce.weight[:num_mid, :, :, :], groups, dim=1
+        )
+        return torch.cat(
+            [sub_filter[:, :sub_in_channels, :, :] for sub_filter in sub_filters],
+            dim=1,
+        )
 
     def get_active_reduce_bias(self, num_mid):
         return (
@@ -317,16 +313,15 @@ class DynamicSE(SEModule):
     def get_active_expand_weight(self, num_mid, in_channel, groups=None):
         if groups is None or groups == 1:
             return self.fc.expand.weight[:in_channel, :num_mid, :, :]
-        else:
-            assert in_channel % groups == 0
-            sub_in_channels = in_channel // groups
-            sub_filters = torch.chunk(
-                self.fc.expand.weight[:, :num_mid, :, :], groups, dim=0
-            )
-            return torch.cat(
-                [sub_filter[:sub_in_channels, :, :, :] for sub_filter in sub_filters],
-                dim=0,
-            )
+        assert in_channel % groups == 0
+        sub_in_channels = in_channel // groups
+        sub_filters = torch.chunk(
+            self.fc.expand.weight[:, :num_mid, :, :], groups, dim=0
+        )
+        return torch.cat(
+            [sub_filter[:sub_in_channels, :, :, :] for sub_filter in sub_filters],
+            dim=0,
+        )
 
     def get_active_expand_bias(self, in_channel, groups=None):
         if groups is None or groups == 1:
@@ -335,13 +330,12 @@ class DynamicSE(SEModule):
                 if self.fc.expand.bias is not None
                 else None
             )
-        else:
-            assert in_channel % groups == 0
-            sub_in_channels = in_channel // groups
-            sub_bias_list = torch.chunk(self.fc.expand.bias, groups, dim=0)
-            return torch.cat(
-                [sub_bias[:sub_in_channels] for sub_bias in sub_bias_list], dim=0
-            )
+        assert in_channel % groups == 0
+        sub_in_channels = in_channel // groups
+        sub_bias_list = torch.chunk(self.fc.expand.bias, groups, dim=0)
+        return torch.cat(
+            [sub_bias[:sub_in_channels] for sub_bias in sub_bias_list], dim=0
+        )
 
     def forward(self, x, groups=None):
         in_channel = x.size(1)
@@ -395,5 +389,4 @@ class DynamicLinear(nn.Module):
         in_features = x.size(1)
         weight = self.get_active_weight(out_features, in_features).contiguous()
         bias = self.get_active_bias(out_features)
-        y = F.linear(x, weight, bias)
-        return y
+        return F.linear(x, weight, bias)

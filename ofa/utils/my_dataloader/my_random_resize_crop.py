@@ -58,10 +58,11 @@ class MyRandomResizedCrop(transforms.RandomResizedCrop):
         if MyRandomResizedCrop.CONTINUOUS:
             min_size = min(MyRandomResizedCrop.IMAGE_SIZE_LIST)
             max_size = max(MyRandomResizedCrop.IMAGE_SIZE_LIST)
-            candidate_sizes = []
-            for i in range(min_size, max_size + 1):
-                if i % MyRandomResizedCrop.IMAGE_SIZE_SEG == 0:
-                    candidate_sizes.append(i)
+            candidate_sizes = [
+                i
+                for i in range(min_size, max_size + 1)
+                if i % MyRandomResizedCrop.IMAGE_SIZE_SEG == 0
+            ]
         else:
             candidate_sizes = MyRandomResizedCrop.IMAGE_SIZE_LIST
 
@@ -134,16 +135,7 @@ class MyResizeRandomCrop(object):
         return F.crop(img, i, j, h, w)
 
     def __repr__(self):
-        return (
-            "MyResizeRandomCrop(size=%s%s, interpolation=%s, use_padding=%s, fill=%s)"
-            % (
-                MyRandomResizedCrop.IMAGE_SIZE_LIST,
-                "@continuous" if MyRandomResizedCrop.CONTINUOUS else "",
-                _pil_interpolation_to_str[self.interpolation],
-                self.use_padding,
-                self.fill,
-            )
-        )
+        return f'MyResizeRandomCrop(size={MyRandomResizedCrop.IMAGE_SIZE_LIST}{"@continuous" if MyRandomResizedCrop.CONTINUOUS else ""}, interpolation={_pil_interpolation_to_str[self.interpolation]}, use_padding={self.use_padding}, fill={self.fill})'
 
 
 class MyResize(object):
@@ -156,8 +148,4 @@ class MyResize(object):
         return img
 
     def __repr__(self):
-        return "MyResize(size=%s%s, interpolation=%s)" % (
-            MyRandomResizedCrop.IMAGE_SIZE_LIST,
-            "@continuous" if MyRandomResizedCrop.CONTINUOUS else "",
-            _pil_interpolation_to_str[self.interpolation],
-        )
+        return f'MyResize(size={MyRandomResizedCrop.IMAGE_SIZE_LIST}{"@continuous" if MyRandomResizedCrop.CONTINUOUS else ""}, interpolation={_pil_interpolation_to_str[self.interpolation]})'

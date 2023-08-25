@@ -53,11 +53,11 @@ class RunConfig:
 
     @property
     def config(self):
-        config = {}
-        for key in self.__dict__:
-            if not key.startswith("_"):
-                config[key] = self.__dict__[key]
-        return config
+        return {
+            key: self.__dict__[key]
+            for key in self.__dict__
+            if not key.startswith("_")
+        }
 
     def copy(self):
         return RunConfig(**self.config)

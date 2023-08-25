@@ -62,12 +62,12 @@ class DistributedRunManager:
         if self.is_root:
             # print net info
             net_info = get_net_info(self.net, self.run_config.data_provider.data_shape)
-            with open("%s/net_info.txt" % self.path, "w") as fout:
+            with open(f"{self.path}/net_info.txt", "w") as fout:
                 fout.write(json.dumps(net_info, indent=4) + "\n")
                 try:
                     fout.write(self.net.module_str + "\n")
                 except Exception:
-                    fout.write("%s do not support `module_str`" % type(self.net))
+                    fout.write(f"{type(self.net)} do not support `module_str`")
                 fout.write(
                     "%s\n" % self.run_config.data_provider.train.dataset.transform
                 )
@@ -105,10 +105,11 @@ class DistributedRunManager:
             try:
                 net_params = self.network.weight_parameters()
             except Exception:
-                net_params = []
-                for param in self.network.parameters():
-                    if param.requires_grad:
-                        net_params.append(param)
+                net_params = [
+                    param
+                    for param in self.network.parameters()
+                    if param.requires_grad
+                ]
         self.optimizer = self.run_config.build_optimizer(net_params)
         self.optimizer = hvd.DistributedOptimizer(
             self.optimizer,
@@ -150,24 +151,25 @@ class DistributedRunManager:
     """ save & load model & save_config & broadcast """
 
     def save_config(self, extra_run_config=None, extra_net_config=None):
-        if self.is_root:
-            run_save_path = os.path.join(self.path, "run.config")
-            if not os.path.isfile(run_save_path):
-                run_config = self.run_config.config
-                if extra_run_config is not None:
-                    run_config.update(extra_run_config)
-                json.dump(run_config, open(run_save_path, "w"), indent=4)
-                print("Run configs dump to %s" % run_save_path)
+        if not self.is_root:
+            return
+        run_save_path = os.path.join(self.path, "run.config")
+        if not os.path.isfile(run_save_path):
+            run_config = self.run_config.config
+            if extra_run_config is not None:
+                run_config.update(extra_run_config)
+            json.dump(run_config, open(run_save_path, "w"), indent=4)
+            print(f"Run configs dump to {run_save_path}")
 
-            try:
-                net_save_path = os.path.join(self.path, "net.config")
-                net_config = self.net.config
-                if extra_net_config is not None:
-                    net_config.update(extra_net_config)
-                json.dump(net_config, open(net_save_path, "w"), indent=4)
-                print("Network configs dump to %s" % net_save_path)
-            except Exception:
-                print("%s do not support net config" % type(self.net))
+        try:
+            net_save_path = os.path.join(self.path, "net.config")
+            net_config = self.net.config
+            if extra_net_config is not None:
+                net_config.update(extra_net_config)
+            json.dump(net_config, open(net_save_path, "w"), indent=4)
+            print(f"Network configs dump to {net_save_path}")
+        except Exception:
+            print(f"{type(self.net)} do not support net config")
 
     def save_model(self, checkpoint=None, is_best=False, model_name=None):
         if self.is_root:
@@ -188,36 +190,35 @@ class DistributedRunManager:
                 torch.save({"state_dict": checkpoint["state_dict"]}, best_path)
 
     def load_model(self, model_fname=None):
-        if self.is_root:
-            latest_fname = os.path.join(self.save_path, "latest.txt")
-            if model_fname is None and os.path.exists(latest_fname):
-                with open(latest_fname, "r") as fin:
-                    model_fname = fin.readline()
-                    if model_fname[-1] == "\n":
-                        model_fname = model_fname[:-1]
+        if not self.is_root:
+            return
+        latest_fname = os.path.join(self.save_path, "latest.txt")
+        if model_fname is None and os.path.exists(latest_fname):
+            with open(latest_fname, "r") as fin:
+                model_fname = fin.readline()
+                if model_fname[-1] == "\n":
+                    model_fname = model_fname[:-1]
             # noinspection PyBroadException
-            try:
-                if model_fname is None or not os.path.exists(model_fname):
-                    model_fname = "%s/checkpoint.pth.tar" % self.save_path
-                    with open(latest_fname, "w") as fout:
-                        fout.write(model_fname + "\n")
-                print("=> loading checkpoint '{}'".format(model_fname))
-                checkpoint = torch.load(model_fname, map_location="cpu")
-            except Exception:
-                self.write_log(
-                    "fail to load checkpoint from %s" % self.save_path, "valid"
-                )
-                return
+        try:
+            if model_fname is None or not os.path.exists(model_fname):
+                model_fname = f"{self.save_path}/checkpoint.pth.tar"
+                with open(latest_fname, "w") as fout:
+                    fout.write(model_fname + "\n")
+            print(f"=> loading checkpoint '{model_fname}'")
+            checkpoint = torch.load(model_fname, map_location="cpu")
+        except Exception:
+            self.write_log(f"fail to load checkpoint from {self.save_path}", "valid")
+            return
 
-            self.net.load_state_dict(checkpoint["state_dict"])
-            if "epoch" in checkpoint:
-                self.start_epoch = checkpoint["epoch"] + 1
-            if "best_acc" in checkpoint:
-                self.best_acc = checkpoint["best_acc"]
-            if "optimizer" in checkpoint:
-                self.optimizer.load_state_dict(checkpoint["optimizer"])
+        self.net.load_state_dict(checkpoint["state_dict"])
+        if "epoch" in checkpoint:
+            self.start_epoch = checkpoint["epoch"] + 1
+        if "best_acc" in checkpoint:
+            self.best_acc = checkpoint["best_acc"]
+        if "optimizer" in checkpoint:
+            self.optimizer.load_state_dict(checkpoint["optimizer"])
 
-            self.write_log("=> loaded checkpoint '{}'".format(model_fname), "valid")
+        self.write_log(f"=> loaded checkpoint '{model_fname}'", "valid")
 
     # noinspection PyArgumentList
     def broadcast(self):
@@ -279,12 +280,8 @@ class DistributedRunManager:
         metric_dict = self.get_metric_dict()
 
         with torch.no_grad():
-            with tqdm(
-                total=len(data_loader),
-                desc="Validate Epoch #{} {}".format(epoch + 1, run_str),
-                disable=no_logs or not self.is_root,
-            ) as t:
-                for i, (images, labels) in enumerate(data_loader):
+            with tqdm(total=len(data_loader), desc=f"Validate Epoch #{epoch + 1} {run_str}", disable=no_logs or not self.is_root) as t:
+                for images, labels in data_loader:
                     images, labels = images.cuda(), labels.cuda()
                     # compute output
                     output = net(images)
@@ -338,11 +335,7 @@ class DistributedRunManager:
         metric_dict = self.get_metric_dict()
         data_time = AverageMeter()
 
-        with tqdm(
-            total=nBatch,
-            desc="Train Epoch #{}".format(epoch + 1),
-            disable=not self.is_root,
-        ) as t:
+        with tqdm(total=nBatch, desc=f"Train Epoch #{epoch + 1}", disable=not self.is_root) as t:
             end = time.time()
             for i, (images, labels) in enumerate(self.run_config.train_loader):
                 MyRandomResizedCrop.BATCH = i

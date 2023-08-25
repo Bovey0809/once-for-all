@@ -15,10 +15,15 @@ __all__ = [
 
 def count_conv_flop(out_size, in_channels, out_channels, kernel_size, groups):
     out_h = out_w = out_size
-    delta_ops = (
-        in_channels * out_channels * kernel_size * kernel_size * out_h * out_w / groups
+    return (
+        in_channels
+        * out_channels
+        * kernel_size
+        * kernel_size
+        * out_h
+        * out_w
+        / groups
     )
-    return delta_ops
 
 
 class LatencyTable(object):
@@ -84,11 +89,11 @@ class ProxylessNASLatencyTable(LatencyTable):
         """
         infos = [
             l_type,
-            "input:%s" % self.repr_shape(input_shape),
-            "output:%s" % self.repr_shape(output_shape),
+            f"input:{self.repr_shape(input_shape)}",
+            f"output:{self.repr_shape(output_shape)}",
         ]
 
-        if l_type in ("expanded_conv",):
+        if l_type in {"expanded_conv"}:
             assert None not in (expand, ks, stride, id_skip)
             infos += [
                 "expand:%d" % expand,
@@ -115,10 +120,7 @@ class ProxylessNASLatencyTable(LatencyTable):
 
             if mb_conv is None:
                 continue
-            if shortcut is None:
-                idskip = 0
-            else:
-                idskip = 1
+            idskip = 0 if shortcut is None else 1
             out_fz = int((fsize - 1) / mb_conv.stride + 1)  # fsize // mb_conv.stride
             block_latency = self.query(
                 "expanded_conv",
@@ -169,10 +171,7 @@ class ProxylessNASLatencyTable(LatencyTable):
 
             if mb_conv is None:
                 continue
-            if shortcut is None:
-                idskip = 0
-            else:
-                idskip = 1
+            idskip = 0 if shortcut is None else 1
             out_fz = int((fsize - 1) / mb_conv["stride"] + 1)
             block_latency = self.query(
                 "expanded_conv",
@@ -273,11 +272,11 @@ class MBv3LatencyTable(LatencyTable):
     ):
         infos = [
             l_type,
-            "input:%s" % self.repr_shape(input_shape),
-            "output:%s" % self.repr_shape(output_shape),
+            f"input:{self.repr_shape(input_shape)}",
+            f"output:{self.repr_shape(output_shape)}",
         ]
 
-        if l_type in ("expanded_conv",):
+        if l_type in {"expanded_conv"}:
             assert None not in (mid, ks, stride, id_skip, se, h_swish)
             infos += [
                 "expand:%d" % mid,
@@ -306,10 +305,7 @@ class MBv3LatencyTable(LatencyTable):
 
             if mb_conv is None:
                 continue
-            if shortcut is None:
-                idskip = 0
-            else:
-                idskip = 1
+            idskip = 0 if shortcut is None else 1
             out_fz = int((fsize - 1) / mb_conv.stride + 1)
             block_latency = self.query(
                 "expanded_conv",
@@ -372,10 +368,7 @@ class MBv3LatencyTable(LatencyTable):
 
             if mb_conv is None:
                 continue
-            if shortcut is None:
-                idskip = 0
-            else:
-                idskip = 1
+            idskip = 0 if shortcut is None else 1
             out_fz = int((fsize - 1) / mb_conv["stride"] + 1)
             if mb_conv["mid_channels"] is None:
                 mb_conv["mid_channels"] = round(
@@ -551,9 +544,7 @@ class ResNet50LatencyTable(LatencyTable):
             # conv3
             flops += count_conv_flop(out_image_size, mid_channel, out_channel, 1, 1)
             # downsample
-            if block_config["stride"] == 1 and in_channel == out_channel:
-                pass
-            else:
+            if block_config["stride"] != 1 or in_channel != out_channel:
                 flops += count_conv_flop(out_image_size, in_channel, out_channel, 1, 1)
             image_size = out_image_size
         # final classifier

@@ -65,8 +65,7 @@ class AccuracyDataset:
                 net_setting = ofa_network.sample_active_subnet()
                 net_id = net_setting2id(net_setting)
                 net_id_list.add(net_id)
-            net_id_list = list(net_id_list)
-            net_id_list.sort()
+            net_id_list = sorted(net_id_list)
             json.dump(net_id_list, open(self.net_id_path, "w"), indent=4)
 
         image_size_list = (
@@ -74,14 +73,11 @@ class AccuracyDataset:
         )
 
         with tqdm(
-            total=len(net_id_list) * len(image_size_list), desc="Building Acc Dataset"
-        ) as t:
+                total=len(net_id_list) * len(image_size_list), desc="Building Acc Dataset"
+            ) as t:
             for image_size in image_size_list:
-                # load val dataset into memory
-                val_dataset = []
                 run_manager.run_config.data_provider.assign_active_img_size(image_size)
-                for images, labels in run_manager.run_config.valid_loader:
-                    val_dataset.append((images, labels))
+                val_dataset = list(run_manager.run_config.valid_loader)
                 # save path
                 os.makedirs(self.acc_src_folder, exist_ok=True)
                 acc_save_path = os.path.join(
@@ -112,13 +108,7 @@ class AccuracyDataset:
                     run_manager.reset_running_statistics(ofa_network)
                     net_setting_str = ",".join(
                         [
-                            "%s_%s"
-                            % (
-                                key,
-                                "%.1f" % list_mean(val)
-                                if isinstance(val, list)
-                                else val,
-                            )
+                            f'{key}_{"%.1f" % list_mean(val) if isinstance(val, list) else val}'
                             for key, val in net_setting.items()
                         ]
                     )
@@ -139,7 +129,7 @@ class AccuracyDataset:
                     )
                     t.update()
 
-                    acc_dict.update({key: info_val})
+                    acc_dict[key] = info_val
                     json.dump(acc_dict, open(acc_save_path, "w"), indent=4)
 
     def merge_acc_dataset(self, image_size_list=None):
@@ -154,8 +144,8 @@ class AccuracyDataset:
                 continue
             full_path = os.path.join(self.acc_src_folder, fname)
             partial_acc_dict = json.load(open(full_path))
-            merged_acc_dict.update(partial_acc_dict)
-            print("loaded %s" % full_path)
+            merged_acc_dict |= partial_acc_dict
+            print(f"loaded {full_path}")
         json.dump(merged_acc_dict, open(self.acc_dict_path, "w"), indent=4)
         return merged_acc_dict
 

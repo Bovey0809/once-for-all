@@ -35,13 +35,11 @@ def set_bn_param(net, momentum, eps, gn_channel_per_group=None, ws_eps=None, **k
 
 
 def get_bn_param(net):
-    ws_eps = None
+    ws_eps = next(
+        (m.WS_EPS for m in net.modules() if isinstance(m, MyConv2d)), None
+    )
     for m in net.modules():
-        if isinstance(m, MyConv2d):
-            ws_eps = m.WS_EPS
-            break
-    for m in net.modules():
-        if isinstance(m, nn.BatchNorm2d) or isinstance(m, nn.BatchNorm1d):
+        if isinstance(m, (nn.BatchNorm2d, nn.BatchNorm1d)):
             return {
                 "momentum": m.momentum,
                 "eps": m.eps,
@@ -91,11 +89,11 @@ def replace_conv2d_with_my_conv2d(net, ws_eps=None):
         return
 
     for m in net.modules():
-        to_update_dict = {}
-        for name, sub_module in m.named_children():
-            if isinstance(sub_module, nn.Conv2d) and not sub_module.bias:
-                # only replace conv2d layers that are followed by normalization layers (i.e., no bias)
-                to_update_dict[name] = sub_module
+        to_update_dict = {
+            name: sub_module
+            for name, sub_module in m.named_children()
+            if isinstance(sub_module, nn.Conv2d) and not sub_module.bias
+        }
         for name, sub_module in to_update_dict.items():
             m._modules[name] = MyConv2d(
                 sub_module.in_channels,
@@ -210,7 +208,7 @@ class MyConv2d(nn.Conv2d):
             )
 
     def __repr__(self):
-        return super(MyConv2d, self).__repr__()[:-1] + ", ws_eps=%s)" % self.WS_EPS
+        return f"{super(MyConv2d, self).__repr__()[:-1]}, ws_eps={self.WS_EPS})"
 
 
 class MyModule(nn.Module):
@@ -270,24 +268,16 @@ class MyNetwork(MyModule):
                     yield param
         elif mode == "include":
             for name, param in self.named_parameters():
-                flag = False
-                for key in keys:
-                    if key in name:
-                        flag = True
-                        break
+                flag = any(key in name for key in keys)
                 if flag and param.requires_grad:
                     yield param
         elif mode == "exclude":
             for name, param in self.named_parameters():
-                flag = True
-                for key in keys:
-                    if key in name:
-                        flag = False
-                        break
+                flag = all(key not in name for key in keys)
                 if flag and param.requires_grad:
                     yield param
         else:
-            raise ValueError("do not support: %s" % mode)
+            raise ValueError(f"do not support: {mode}")
 
     def weight_parameters(self):
         return self.get_parameters()

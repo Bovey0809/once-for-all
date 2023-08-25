@@ -25,18 +25,16 @@ class AccuracyPredictor(nn.Module):
         self.n_layers = n_layers
         self.device = device
 
-        # build layers
-        layers = []
-        for i in range(self.n_layers):
-            layers.append(
-                nn.Sequential(
-                    nn.Linear(
-                        self.arch_encoder.n_dim if i == 0 else self.hidden_size,
-                        self.hidden_size,
-                    ),
-                    nn.ReLU(inplace=True),
-                )
+        layers = [
+            nn.Sequential(
+                nn.Linear(
+                    self.arch_encoder.n_dim if i == 0 else self.hidden_size,
+                    self.hidden_size,
+                ),
+                nn.ReLU(inplace=True),
             )
+            for i in range(self.n_layers)
+        ]
         layers.append(nn.Linear(self.hidden_size, 1, bias=False))
         self.layers = nn.Sequential(*layers)
         self.base_acc = nn.Parameter(
@@ -48,7 +46,7 @@ class AccuracyPredictor(nn.Module):
             if "state_dict" in checkpoint:
                 checkpoint = checkpoint["state_dict"]
             self.load_state_dict(checkpoint)
-            print("Loaded checkpoint from %s" % checkpoint_path)
+            print(f"Loaded checkpoint from {checkpoint_path}")
 
         self.layers = self.layers.to(self.device)
 

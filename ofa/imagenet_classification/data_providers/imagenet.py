@@ -170,7 +170,7 @@ class ImagenetDataProvider(DataProvider):
 
     @property
     def data_url(self):
-        raise ValueError("unable to download %s" % self.name())
+        raise ValueError(f"unable to download {self.name()}")
 
     def train_dataset(self, _transforms):
         return datasets.ImageFolder(self.train_path, _transforms)
@@ -197,20 +197,17 @@ class ImagenetDataProvider(DataProvider):
             image_size = self.image_size
         if print_log:
             print(
-                "Color jitter: %s, resize_scale: %s, img_size: %s"
-                % (self.distort_color, self.resize_scale, image_size)
+                f"Color jitter: {self.distort_color}, resize_scale: {self.resize_scale}, img_size: {image_size}"
             )
 
         if isinstance(image_size, list):
             resize_transform_class = MyRandomResizedCrop
             print(
-                "Use MyRandomResizedCrop: %s, \t %s"
-                % MyRandomResizedCrop.get_candidate_image_size(),
-                "sync=%s, continuous=%s"
-                % (
-                    MyRandomResizedCrop.SYNC_DISTRIBUTED,
-                    MyRandomResizedCrop.CONTINUOUS,
+                (
+                    "Use MyRandomResizedCrop: %s, \t %s"
+                    % resize_transform_class.get_candidate_image_size()
                 ),
+                f"sync={resize_transform_class.SYNC_DISTRIBUTED}, continuous={resize_transform_class.CONTINUOUS}",
             )
         else:
             resize_transform_class = transforms.RandomResizedCrop

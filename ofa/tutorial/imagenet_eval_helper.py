@@ -25,8 +25,9 @@ def evaluate_ofa_subnet(
     ofa_net.set_active_subnet(ks=net_config["ks"], d=net_config["d"], e=net_config["e"])
     subnet = ofa_net.get_active_subnet().to(device)
     calib_bn(subnet, path, net_config["r"][0], batch_size)
-    top1 = validate(subnet, path, net_config["r"][0], data_loader, batch_size, device)
-    return top1
+    return validate(
+        subnet, path, net_config["r"][0], data_loader, batch_size, device
+    )
 
 
 def calib_bn(net, path, image_size, batch_size, num_images=2000):
@@ -85,7 +86,7 @@ def validate(net, path, image_size, data_loader, batch_size=100, device="cuda:0"
 
     with torch.no_grad():
         with tqdm(total=len(data_loader), desc="Validate") as t:
-            for i, (images, labels) in enumerate(data_loader):
+            for images, labels in data_loader:
                 images, labels = images.to(device), labels.to(device)
                 # compute output
                 output = net(images)
@@ -219,7 +220,7 @@ def evaluate_ofa_specialized(path, data_loader, batch_size=100, device="cuda:0")
         }
 
         sub_efficiency_map = platform_efficiency_map[platform_name]
-        if not platform_name == "flops":
+        if platform_name != "flops":
             print(
                 "Now, please specify a latency constraint for model specialization among",
                 sorted(list(sub_efficiency_map.keys())),
@@ -238,7 +239,7 @@ def evaluate_ofa_specialized(path, data_loader, batch_size=100, device="cuda:0")
                 print("Sorry, please input an integer! \n")
                 continue
             efficiency_constraint = int(efficiency_constraint)
-            if not efficiency_constraint in sub_efficiency_map.keys():
+            if efficiency_constraint not in sub_efficiency_map.keys():
                 print(
                     "Sorry, please choose a value from: ",
                     sorted(list(sub_efficiency_map.keys())),

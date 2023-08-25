@@ -15,4 +15,4 @@ def get_net_by_name(name):
     elif name == ResNets.__name__:
         return ResNets
     else:
-        raise ValueError("unrecognized type of network: %s" % name)
+        raise ValueError(f"unrecognized type of network: {name}")

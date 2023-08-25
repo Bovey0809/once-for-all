@@ -403,14 +403,13 @@ class DynamicMBConvLayer(MyModule):
             se_reduce.weight.data = torch.index_select(se_reduce.weight.data, 0, se_idx)
             se_reduce.bias.data = torch.index_select(se_reduce.bias.data, 0, se_idx)
 
-        if self.inverted_bottleneck is not None:
-            adjust_bn_according_to_idx(self.inverted_bottleneck.bn.bn, sorted_idx)
-            self.inverted_bottleneck.conv.conv.weight.data = torch.index_select(
-                self.inverted_bottleneck.conv.conv.weight.data, 0, sorted_idx
-            )
-            return None
-        else:
+        if self.inverted_bottleneck is None:
             return sorted_idx
+        adjust_bn_according_to_idx(self.inverted_bottleneck.bn.bn, sorted_idx)
+        self.inverted_bottleneck.conv.conv.weight.data = torch.index_select(
+            self.inverted_bottleneck.conv.conv.weight.data, 0, sorted_idx
+        )
+        return None
 
 
 class DynamicConvLayer(MyModule):
@@ -705,8 +704,7 @@ class DynamicResNetBottleneckBlock(MyModule):
     @property
     def active_middle_channels(self):
         feature_dim = round(self.active_out_channel * self.active_expand_ratio)
-        feature_dim = make_divisible(feature_dim, MyNetwork.CHANNEL_DIVISIBLE)
-        return feature_dim
+        return make_divisible(feature_dim, MyNetwork.CHANNEL_DIVISIBLE)
 
     ############################################################################################
 

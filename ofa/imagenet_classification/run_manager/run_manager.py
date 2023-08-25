@@ -60,7 +60,7 @@ class RunManager:
         net_info = get_net_info(
             self.net, self.run_config.data_provider.data_shape, measure_latency, True
         )
-        with open("%s/net_info.txt" % self.path, "w") as fout:
+        with open(f"{self.path}/net_info.txt", "w") as fout:
             fout.write(json.dumps(net_info, indent=4) + "\n")
             # noinspection PyBroadException
             try:
@@ -100,10 +100,11 @@ class RunManager:
             try:
                 net_params = self.network.weight_parameters()
             except Exception:
-                net_params = []
-                for param in self.network.parameters():
-                    if param.requires_grad:
-                        net_params.append(param)
+                net_params = [
+                    param
+                    for param in self.network.parameters()
+                    if param.requires_grad
+                ]
         self.optimizer = self.run_config.build_optimizer(net_params)
 
         self.net = torch.nn.DataParallel(self.net)
@@ -165,13 +166,13 @@ class RunManager:
         # noinspection PyBroadException
         try:
             if model_fname is None or not os.path.exists(model_fname):
-                model_fname = "%s/checkpoint.pth.tar" % self.save_path
+                model_fname = f"{self.save_path}/checkpoint.pth.tar"
                 with open(latest_fname, "w") as fout:
                     fout.write(model_fname + "\n")
-            print("=> loading checkpoint '{}'".format(model_fname))
+            print(f"=> loading checkpoint '{model_fname}'")
             checkpoint = torch.load(model_fname, map_location="cpu")
         except Exception:
-            print("fail to load checkpoint from %s" % self.save_path)
+            print(f"fail to load checkpoint from {self.save_path}")
             return {}
 
         self.network.load_state_dict(checkpoint["state_dict"])
@@ -182,7 +183,7 @@ class RunManager:
         if "optimizer" in checkpoint:
             self.optimizer.load_state_dict(checkpoint["optimizer"])
 
-        print("=> loaded checkpoint '{}'".format(model_fname))
+        print(f"=> loaded checkpoint '{model_fname}'")
         return checkpoint
 
     def save_config(self, extra_run_config=None, extra_net_config=None):
@@ -193,7 +194,7 @@ class RunManager:
             if extra_run_config is not None:
                 run_config.update(extra_run_config)
             json.dump(run_config, open(run_save_path, "w"), indent=4)
-            print("Run configs dump to %s" % run_save_path)
+            print(f"Run configs dump to {run_save_path}")
 
         try:
             net_save_path = os.path.join(self.path, "net.config")
@@ -201,9 +202,9 @@ class RunManager:
             if extra_net_config is not None:
                 net_config.update(extra_net_config)
             json.dump(net_config, open(net_save_path, "w"), indent=4)
-            print("Network configs dump to %s" % net_save_path)
+            print(f"Network configs dump to {net_save_path}")
         except Exception:
-            print("%s do not support net config" % type(self.network))
+            print(f"{type(self.network)} do not support net config")
 
     """ metric related """
 
@@ -258,12 +259,8 @@ class RunManager:
         metric_dict = self.get_metric_dict()
 
         with torch.no_grad():
-            with tqdm(
-                total=len(data_loader),
-                desc="Validate Epoch #{} {}".format(epoch + 1, run_str),
-                disable=no_logs,
-            ) as t:
-                for i, (images, labels) in enumerate(data_loader):
+            with tqdm(total=len(data_loader), desc=f"Validate Epoch #{epoch + 1} {run_str}", disable=no_logs) as t:
+                for images, labels in data_loader:
                     images, labels = images.to(self.device), labels.to(self.device)
                     # compute output
                     output = net(images)
@@ -316,10 +313,7 @@ class RunManager:
         metric_dict = self.get_metric_dict()
         data_time = AverageMeter()
 
-        with tqdm(
-            total=nBatch,
-            desc="{} Train Epoch #{}".format(self.run_config.dataset, epoch + 1),
-        ) as t:
+        with tqdm(total=nBatch, desc=f"{self.run_config.dataset} Train Epoch #{epoch + 1}") as t:
             end = time.time()
             for i, (images, labels) in enumerate(self.run_config.train_loader):
                 MyRandomResizedCrop.BATCH = i

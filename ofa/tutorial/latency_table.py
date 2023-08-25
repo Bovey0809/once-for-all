@@ -39,11 +39,11 @@ class LatencyEstimator(object):
     ):
         infos = [
             l_type,
-            "input:%s" % self.repr_shape(input_shape),
-            "output:%s" % self.repr_shape(output_shape),
+            f"input:{self.repr_shape(input_shape)}",
+            f"output:{self.repr_shape(output_shape)}",
         ]
 
-        if l_type in ("expanded_conv",):
+        if l_type in {"expanded_conv"}:
             assert None not in (mid, ks, stride, id_skip, se, h_swish)
             infos += [
                 "expand:%d" % mid,
@@ -72,10 +72,7 @@ class LatencyEstimator(object):
 
             if mb_conv is None:
                 continue
-            if shortcut is None:
-                idskip = 0
-            else:
-                idskip = 1
+            idskip = 0 if shortcut is None else 1
             out_fz = int((fsize - 1) / mb_conv.stride + 1)
             block_latency = self.query(
                 "expanded_conv",

@@ -65,23 +65,21 @@ class WeightedDistributedSampler(DistributedSampler):
     def __iter__(self):
         if self.weights is None:
             return super(WeightedDistributedSampler, self).__iter__()
-        else:
-            g = torch.Generator()
-            g.manual_seed(self.epoch)
-            if self.shuffle:
-                # original: indices = torch.randperm(len(self.dataset), generator=g).tolist()
-                indices = torch.multinomial(
-                    self.weights, len(self.dataset), self.replacement, generator=g
-                ).tolist()
-            else:
-                indices = list(range(len(self.dataset)))
+        g = torch.Generator()
+        g.manual_seed(self.epoch)
+        indices = (
+            torch.multinomial(
+                self.weights, len(self.dataset), self.replacement, generator=g
+            ).tolist()
+            if self.shuffle
+            else list(range(len(self.dataset)))
+        )
+        # add extra samples to make it evenly divisible
+        indices += indices[: (self.total_size - len(indices))]
+        assert len(indices) == self.total_size
 
-            # add extra samples to make it evenly divisible
-            indices += indices[: (self.total_size - len(indices))]
-            assert len(indices) == self.total_size
+        # subsample
+        indices = indices[self.rank : self.total_size : self.num_replicas]
+        assert len(indices) == self.num_samples
 
-            # subsample
-            indices = indices[self.rank : self.total_size : self.num_replicas]
-            assert len(indices) == self.num_samples
-
-            return iter(indices)
+        return iter(indices)

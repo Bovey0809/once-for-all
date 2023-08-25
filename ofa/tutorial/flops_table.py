@@ -10,7 +10,7 @@ __all__ = ["FLOPsTable"]
 
 def rm_bn_from_net(net):
     for m in net.modules():
-        if isinstance(m, nn.BatchNorm2d) or isinstance(m, nn.BatchNorm1d):
+        if isinstance(m, (nn.BatchNorm2d, nn.BatchNorm1d)):
             m.forward = lambda x: x
 
 
@@ -46,21 +46,19 @@ class FLOPsTable:
         rm_bn_from_net(layer)
         network = layer.to(self.device)
         torch.cuda.synchronize()
-        for i in range(warmup_steps):
+        for _ in range(warmup_steps):
             network(inputs)
         torch.cuda.synchronize()
 
         torch.cuda.synchronize()
         st = time.time()
-        for i in range(measure_steps):
+        for _ in range(measure_steps):
             network(inputs)
         torch.cuda.synchronize()
         ed = time.time()
         total_time += ed - st
 
-        latency = total_time / measure_steps * 1000
-
-        return latency
+        return total_time / measure_steps * 1000
 
     @torch.no_grad()
     def measure_single_layer_flops(self, layer: nn.Module, input_size: tuple):

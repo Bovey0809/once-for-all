@@ -102,10 +102,7 @@ class OFAMobileNetV3(MobileNetV3):
 
             output_channel = width
             for i in range(n_block):
-                if i == 0:
-                    stride = s
-                else:
-                    stride = 1
+                stride = s if i == 0 else 1
                 mobile_inverted_conv = DynamicMBConvLayer(
                     in_channel_list=val2list(feature_dim),
                     out_channel_list=val2list(output_channel),
@@ -230,7 +227,7 @@ class OFAMobileNetV3(MobileNetV3):
                 new_key = new_key.replace("conv.weight", "conv.conv.weight")
             else:
                 raise ValueError(new_key)
-            assert new_key in model_dict, "%s" % new_key
+            assert new_key in model_dict, f"{new_key}"
             model_dict[new_key] = state_dict[key]
         super(OFAMobileNetV3, self).load_state_dict(model_dict)
 

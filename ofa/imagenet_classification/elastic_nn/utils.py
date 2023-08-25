@@ -21,8 +21,8 @@ def set_running_statistics(model, data_loader, distributed=False):
     for name, m in forward_model.named_modules():
         if isinstance(m, nn.BatchNorm2d):
             if distributed:
-                bn_mean[name] = DistributedTensor(name + "#mean")
-                bn_var[name] = DistributedTensor(name + "#var")
+                bn_mean[name] = DistributedTensor(f"{name}#mean")
+                bn_var[name] = DistributedTensor(f"{name}#var")
             else:
                 bn_mean[name] = AverageMeter()
                 bn_var[name] = AverageMeter()
@@ -64,7 +64,7 @@ def set_running_statistics(model, data_loader, distributed=False):
 
             m.forward = new_forward(m, bn_mean[name], bn_var[name])
 
-    if len(bn_mean) == 0:
+    if not bn_mean:
         # skip if there is no batch normalization layers in the network
         return
 

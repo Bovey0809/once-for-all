@@ -40,10 +40,10 @@ class ResNets(MyNetwork):
 
     @property
     def module_str(self):
-        _str = ""
-        for layer in self.input_stem:
-            _str += layer.module_str + "\n"
-        _str += "max_pooling(ks=3, stride=2)\n"
+        _str = (
+            "".join(layer.module_str + "\n" for layer in self.input_stem)
+            + "max_pooling(ks=3, stride=2)\n"
+        )
         for block in self.blocks:
             _str += block.module_str + "\n"
         _str += self.global_avg_pool.__repr__() + "\n"
@@ -64,13 +64,14 @@ class ResNets(MyNetwork):
     def build_from_config(config):
         classifier = set_layer_from_config(config["classifier"])
 
-        input_stem = []
-        for layer_config in config["input_stem"]:
-            input_stem.append(set_layer_from_config(layer_config))
-        blocks = []
-        for block_config in config["blocks"]:
-            blocks.append(set_layer_from_config(block_config))
-
+        input_stem = [
+            set_layer_from_config(layer_config)
+            for layer_config in config["input_stem"]
+        ]
+        blocks = [
+            set_layer_from_config(block_config)
+            for block_config in config["blocks"]
+        ]
         net = ResNets(input_stem, blocks, classifier)
         if "bn" in config:
             net.set_bn_param(**config["bn"])

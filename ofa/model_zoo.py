@@ -31,7 +31,7 @@ def ofa_specialized(net_id: str, pretrained=True):
         open(
             download_url(
                 url_base + net_id + "/net.config",
-                model_dir=".torch/ofa_specialized/%s/" % net_id,
+                model_dir=f".torch/ofa_specialized/{net_id}/",
             )
         )
     )
@@ -41,7 +41,7 @@ def ofa_specialized(net_id: str, pretrained=True):
         open(
             download_url(
                 url_base + net_id + "/run.config",
-                model_dir=".torch/ofa_specialized/%s/" % net_id,
+                model_dir=f".torch/ofa_specialized/{net_id}/",
             )
         )
     )["image_size"]
@@ -50,7 +50,7 @@ def ofa_specialized(net_id: str, pretrained=True):
         init = torch.load(
             download_url(
                 url_base + net_id + "/init",
-                model_dir=".torch/ofa_specialized/%s/" % net_id,
+                model_dir=f".torch/ofa_specialized/{net_id}/",
             ),
             map_location="cpu",
         )["state_dict"]
@@ -96,7 +96,7 @@ def ofa_net(net_id, pretrained=True):
         url_base = "https://drive.google.com/uc?id=1xy6VIPEHXqbbqNu3xEZUxhp5FbTVs5cQ"
         googledrive = True
     else:
-        raise ValueError("Not supported: %s" % net_id)
+        raise ValueError(f"Not supported: {net_id}")
 
     if pretrained:
         if googledrive:
@@ -111,13 +111,13 @@ def ofa_net(net_id, pretrained=True):
 
 def proxylessnas_net(net_id, pretrained=True):
     net = proxyless_base(
-        net_config="https://raw.githubusercontent.com/han-cai/files/master/proxylessnas/%s.config" % net_id,
+        net_config=f"https://raw.githubusercontent.com/han-cai/files/master/proxylessnas/{net_id}.config"
     )
     if pretrained:
         net.load_state_dict(
             torch.load(
                 download_url(
-                    "https://raw.githubusercontent.com/han-cai/files/master/proxylessnas/%s.pth" % net_id
+                    f"https://raw.githubusercontent.com/han-cai/files/master/proxylessnas/{net_id}.pth"
                 ),
                 map_location="cpu",
             )["state_dict"]

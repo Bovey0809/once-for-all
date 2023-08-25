@@ -156,7 +156,7 @@ top5 = AverageMeter()
 
 with torch.no_grad():
     with tqdm(total=len(data_loader), desc="Validate") as t:
-        for i, (images, labels) in enumerate(data_loader):
+        for images, labels in data_loader:
             images, labels = images.cuda(), labels.cuda()
             # compute output
             output = net(images)

@@ -85,7 +85,7 @@ class WorkerInfo(object):
     def __setattr__(self, key, val):
         if self.__initialized:
             raise RuntimeError(
-                "Cannot assign attributes to {} objects".format(self.__class__.__name__)
+                f"Cannot assign attributes to {self.__class__.__name__} objects"
             )
         return super(WorkerInfo, self).__setattr__(key, val)
 
@@ -172,7 +172,7 @@ def worker_loop(
             )
         except Exception:
             init_exception = ExceptionWrapper(
-                where="in DataLoader worker process {}".format(worker_id)
+                where=f"in DataLoader worker process {worker_id}"
             )
 
         # When using Iterable mode, some worker can exit earlier than others due
@@ -229,9 +229,7 @@ def worker_loop(
                         # It is important that we don't store exc_info in a variable.
                         # `ExceptionWrapper` does the correct thing.
                         # See NOTE [ Python Traceback Reference Cycle Problem ]
-                        data = ExceptionWrapper(
-                            where="in DataLoader worker process {}".format(worker_id)
-                        )
+                        data = ExceptionWrapper(where=f"in DataLoader worker process {worker_id}")
             data_queue.put((idx, data))
             del data, idx, index, r  # save memory
     except KeyboardInterrupt:

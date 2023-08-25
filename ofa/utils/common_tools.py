@@ -36,15 +36,12 @@ __all__ = [
 
 def sort_dict(src_dict, reverse=False, return_dict=True):
     output = sorted(src_dict.items(), key=lambda x: x[1], reverse=reverse)
-    if return_dict:
-        return dict(output)
-    else:
-        return output
+    return dict(output) if return_dict else output
 
 
 def get_same_padding(kernel_size):
     if isinstance(kernel_size, tuple):
-        assert len(kernel_size) == 2, "invalid kernel size: %s" % kernel_size
+        assert len(kernel_size) == 2, f"invalid kernel size: {kernel_size}"
         p1 = get_same_padding(kernel_size[0])
         p2 = get_same_padding(kernel_size[1])
         return p1, p2
@@ -98,7 +95,7 @@ def min_divisible_value(n1, v1):
 
 
 def val2list(val, repeat_time=1):
-    if isinstance(val, list) or isinstance(val, np.ndarray):
+    if isinstance(val, (list, np.ndarray)):
         return val
     elif isinstance(val, tuple):
         return list(val)
@@ -115,13 +112,13 @@ def download_url(url, model_dir="~/.torch/", overwrite=False):
         model_dir = os.path.join(model_dir, target_dir)
         cached_file = model_dir
         if not os.path.exists(cached_file) or overwrite:
-            sys.stderr.write('Downloading: "{}" to {}\n'.format(url, cached_file))
+            sys.stderr.write(f'Downloading: "{url}" to {cached_file}\n')
             urlretrieve(url, cached_file)
         return cached_file
     except Exception as e:
         # remove lock file so download can be executed next time.
         os.remove(os.path.join(model_dir, "download.lock"))
-        sys.stderr.write("Failed to download from url %s" % url + "\n" + str(e) + "\n")
+        sys.stderr.write(f"Failed to download from url {url}" + "\n" + str(e) + "\n")
         return None
 
 
@@ -140,7 +137,7 @@ def write_log(logs_path, log_str, prefix="valid", should_print=True, mode="a"):
             fout.write(log_str + "\n")
             fout.flush()
     else:
-        with open(os.path.join(logs_path, "%s.txt" % prefix), mode) as fout:
+        with open(os.path.join(logs_path, f"{prefix}.txt"), mode) as fout:
             fout.write(log_str + "\n")
             fout.flush()
     if should_print:
@@ -217,9 +214,9 @@ class MultiClassAverageMeter:
         self.balanced = balanced
 
         self.counts = []
-        for k in range(self.num_classes):
-            self.counts.append(np.ndarray((2, 2), dtype=np.float32))
-
+        self.counts.extend(
+            np.ndarray((2, 2), dtype=np.float32) for _ in range(self.num_classes)
+        )
         self.reset()
 
     def reset(self):

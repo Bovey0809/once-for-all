@@ -99,10 +99,10 @@ class ProxylessNASNets(MyNetwork):
         feature_mix_layer = set_layer_from_config(config["feature_mix_layer"])
         classifier = set_layer_from_config(config["classifier"])
 
-        blocks = []
-        for block_config in config["blocks"]:
-            blocks.append(ResidualBlock.build_from_config(block_config))
-
+        blocks = [
+            ResidualBlock.build_from_config(block_config)
+            for block_config in config["blocks"]
+        ]
         net = ProxylessNASNets(first_conv, blocks, feature_mix_layer, classifier)
         if "bn" in config:
             net.set_bn_param(**config["bn"])
@@ -193,7 +193,7 @@ class MobileNetV2(ProxylessNASNets):
             for i in range(len(inverted_residual_setting)):
                 inverted_residual_setting[i][1] = stage_width_list[i]
 
-        ks = val2list(ks, sum([n for _, _, n, _ in inverted_residual_setting]) - 1)
+        ks = val2list(ks, sum(n for _, _, n, _ in inverted_residual_setting) - 1)
         _pt = 0
 
         # first conv layer
@@ -211,10 +211,7 @@ class MobileNetV2(ProxylessNASNets):
         for t, c, n, s in inverted_residual_setting:
             output_channel = make_divisible(c * width_mult, MyNetwork.CHANNEL_DIVISIBLE)
             for i in range(n):
-                if i == 0:
-                    stride = s
-                else:
-                    stride = 1
+                stride = s if i == 0 else 1
                 if t == 1:
                     kernel_size = 3
                 else:
@@ -227,11 +224,8 @@ class MobileNetV2(ProxylessNASNets):
                     stride=stride,
                     expand_ratio=t,
                 )
-                if stride == 1:
-                    if input_channel == output_channel:
-                        shortcut = IdentityLayer(input_channel, input_channel)
-                    else:
-                        shortcut = None
+                if stride == 1 and input_channel == output_channel:
+                    shortcut = IdentityLayer(input_channel, input_channel)
                 else:
                     shortcut = None
                 blocks.append(ResidualBlock(mobile_inverted_conv, shortcut))

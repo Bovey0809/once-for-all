@@ -72,10 +72,10 @@ class MobileNetV3(MyNetwork):
         feature_mix_layer = set_layer_from_config(config["feature_mix_layer"])
         classifier = set_layer_from_config(config["classifier"])
 
-        blocks = []
-        for block_config in config["blocks"]:
-            blocks.append(ResidualBlock.build_from_config(block_config))
-
+        blocks = [
+            ResidualBlock.build_from_config(block_config)
+            for block_config in config["blocks"]
+        ]
         net = MobileNetV3(
             first_conv, blocks, final_expand_layer, feature_mix_layer, classifier
         )

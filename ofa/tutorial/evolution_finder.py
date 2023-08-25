@@ -17,25 +17,20 @@ class ArchManager:
 
     def random_sample(self):
         sample = {}
-        d = []
         e = []
         ks = []
-        for i in range(self.num_stages):
-            d.append(random.choice(self.depths))
-
-        for i in range(self.num_blocks):
+        d = [random.choice(self.depths) for _ in range(self.num_stages)]
+        for _ in range(self.num_blocks):
             e.append(random.choice(self.expand_ratios))
             ks.append(random.choice(self.kernel_sizes))
 
-        sample = {
+        return {
             "wid": None,
             "ks": ks,
             "e": e,
             "d": d,
             "r": [random.choice(self.resolutions)],
         }
-
-        return sample
 
     def random_resample(self, sample, i):
         assert i >= 0 and i < self.num_blocks
@@ -65,21 +60,22 @@ class EvolutionFinder:
         **kwargs
     ):
         self.constraint_type = constraint_type
-        if not constraint_type in self.valid_constraint_range.keys():
+        if constraint_type not in self.valid_constraint_range.keys():
             self.invite_reset_constraint_type()
         self.efficiency_constraint = efficiency_constraint
-        if not (
-            efficiency_constraint <= self.valid_constraint_range[constraint_type][1]
-            and efficiency_constraint >= self.valid_constraint_range[constraint_type][0]
+        if (
+            efficiency_constraint > self.valid_constraint_range[constraint_type][1]
+            or efficiency_constraint
+            < self.valid_constraint_range[constraint_type][0]
         ):
             self.invite_reset_constraint()
 
         self.efficiency_predictor = efficiency_predictor
         self.accuracy_predictor = accuracy_predictor
         self.arch_manager = ArchManager()
-        self.num_blocks = self.arch_manager.num_blocks
         self.num_stages = self.arch_manager.num_stages
 
+        self.num_blocks = self.arch_manager.num_blocks
         self.mutate_prob = kwargs.get("mutate_prob", 0.1)
         self.population_size = kwargs.get("population_size", 100)
         self.max_time_budget = kwargs.get("max_time_budget", 500)
@@ -182,7 +178,6 @@ class EvolutionFinder:
         constraint = self.efficiency_constraint
 
         best_valids = [-100]
-        population = []  # (validation, sample, latency) tuples
         child_pool = []
         efficiency_pool = []
         best_info = None
@@ -194,21 +189,18 @@ class EvolutionFinder:
             efficiency_pool.append(efficiency)
 
         accs = self.accuracy_predictor.predict_accuracy(child_pool)
-        for i in range(population_size):
-            population.append((accs[i].item(), child_pool[i], efficiency_pool[i]))
-
+        population = [
+            (accs[i].item(), child_pool[i], efficiency_pool[i])
+            for i in range(population_size)
+        ]
         if verbose:
             print("Start Evolution...")
         # After the population is seeded, proceed with evolving the population.
-        for iter in tqdm(
-            range(max_time_budget),
-            desc="Searching with %s constraint (%s)"
-            % (self.constraint_type, self.efficiency_constraint),
-        ):
+        for iter in tqdm(range(max_time_budget), desc=f"Searching with {self.constraint_type} constraint ({self.efficiency_constraint})"):
             parents = sorted(population, key=lambda x: x[0])[::-1][:parents_size]
             acc = parents[0][0]
             if verbose:
-                print("Iter: {} Acc: {}".format(iter - 1, parents[0][0]))
+                print(f"Iter: {iter - 1} Acc: {parents[0][0]}")
 
             if acc > best_valids[-1]:
                 best_valids.append(acc)
@@ -220,14 +212,14 @@ class EvolutionFinder:
             child_pool = []
             efficiency_pool = []
 
-            for i in range(mutation_numbers):
+            for _ in range(mutation_numbers):
                 par_sample = population[np.random.randint(parents_size)][1]
                 # Mutate
                 new_sample, efficiency = self.mutate_sample(par_sample)
                 child_pool.append(new_sample)
                 efficiency_pool.append(efficiency)
 
-            for i in range(population_size - mutation_numbers):
+            for _ in range(population_size - mutation_numbers):
                 par_sample1 = population[np.random.randint(parents_size)][1]
                 par_sample2 = population[np.random.randint(parents_size)][1]
                 # Crossover

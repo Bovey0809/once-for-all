@@ -66,19 +66,19 @@ def validate(
         for e in expand_ratio_list:
             for k in ks_list:
                 for w in width_mult_list:
-                    for img_size in image_size_list:
-                        subnet_settings.append(
-                            [
-                                {
-                                    "image_size": img_size,
-                                    "d": d,
-                                    "e": e,
-                                    "ks": k,
-                                    "w": w,
-                                },
-                                "R%s-D%s-E%s-K%s-W%s" % (img_size, d, e, k, w),
-                            ]
-                        )
+                    subnet_settings.extend(
+                        [
+                            {
+                                "image_size": img_size,
+                                "d": d,
+                                "e": e,
+                                "ks": k,
+                                "w": w,
+                            },
+                            f"R{img_size}-D{d}-E{e}-K{k}-W{w}",
+                        ]
+                        for img_size in image_size_list
+                    )
     if additional_setting is not None:
         subnet_settings += additional_setting
 
@@ -87,7 +87,9 @@ def validate(
     valid_log = ""
     for setting, name in subnet_settings:
         run_manager.write_log(
-            "-" * 30 + " Validate %s " % name + "-" * 30, "train", should_print=False
+            "-" * 30 + f" Validate {name} " + "-" * 30,
+            "train",
+            should_print=False,
         )
         run_manager.run_config.data_provider.assign_active_img_size(
             setting.pop("image_size")
@@ -113,9 +115,9 @@ def validate(
 
 
 def train_one_epoch(run_manager, args, epoch, warmup_epochs=0, warmup_lr=0):
-    dynamic_net = run_manager.network
     distributed = isinstance(run_manager, DistributedRunManager)
 
+    dynamic_net = run_manager.network
     # switch to train mode
     dynamic_net.train()
     if distributed:
@@ -128,11 +130,7 @@ def train_one_epoch(run_manager, args, epoch, warmup_epochs=0, warmup_lr=0):
     losses = DistributedMetric("train_loss") if distributed else AverageMeter()
     metric_dict = run_manager.get_metric_dict()
 
-    with tqdm(
-        total=nBatch,
-        desc="Train Epoch #{}".format(epoch + 1),
-        disable=distributed and not run_manager.is_root,
-    ) as t:
+    with tqdm(total=nBatch, desc=f"Train Epoch #{epoch + 1}", disable=distributed and not run_manager.is_root) as t:
         end = time.time()
         for i, (images, labels) in enumerate(run_manager.run_config.train_loader):
             MyRandomResizedCrop.BATCH = i
@@ -176,13 +174,7 @@ def train_one_epoch(run_manager, args, epoch, warmup_epochs=0, warmup_lr=0):
                     "%d: " % _
                     + ",".join(
                         [
-                            "%s_%s"
-                            % (
-                                key,
-                                "%.1f" % subset_mean(val, 0)
-                                if isinstance(val, list)
-                                else val,
-                            )
+                            f'{key}_{"%.1f" % subset_mean(val, 0) if isinstance(val, list) else val}'
                             for key, val in subnet_settings.items()
                         ]
                     )
@@ -281,7 +273,7 @@ def load_models(run_manager, dynamic_net, model_path=None):
     # specify init path
     init = torch.load(model_path, map_location="cpu")["state_dict"]
     dynamic_net.load_state_dict(init)
-    run_manager.write_log("Loaded init from %s" % model_path, "valid")
+    run_manager.write_log(f"Loaded init from {model_path}", "valid")
 
 
 def train_elastic_depth(train_func, run_manager, args, validate_func_dict):
@@ -309,10 +301,13 @@ def train_elastic_depth(train_func, run_manager, args, validate_func_dict):
         assert args.resume
 
     run_manager.write_log(
-        "-" * 30
-        + "Supporting Elastic Depth: %s -> %s"
-        % (depth_stage_list[: current_stage + 1], depth_stage_list[: current_stage + 2])
-        + "-" * 30,
+        (
+            (
+                "-" * 30
+                + f"Supporting Elastic Depth: {depth_stage_list[:current_stage + 1]} -> {depth_stage_list[:current_stage + 2]}"
+            )
+            + "-" * 30
+        ),
         "valid",
     )
     # add depth list constraints
@@ -361,13 +356,13 @@ def train_elastic_expand(train_func, run_manager, args, validate_func_dict):
         assert args.resume
 
     run_manager.write_log(
-        "-" * 30
-        + "Supporting Elastic Expand Ratio: %s -> %s"
-        % (
-            expand_stage_list[: current_stage + 1],
-            expand_stage_list[: current_stage + 2],
-        )
-        + "-" * 30,
+        (
+            (
+                "-" * 30
+                + f"Supporting Elastic Expand Ratio: {expand_stage_list[:current_stage + 1]} -> {expand_stage_list[:current_stage + 2]}"
+            )
+            + "-" * 30
+        ),
         "valid",
     )
     if len(set(dynamic_net.ks_list)) == 1 and len(set(dynamic_net.depth_list)) == 1:
@@ -422,10 +417,13 @@ def train_elastic_width_mult(train_func, run_manager, args, validate_func_dict):
         assert args.resume
 
     run_manager.write_log(
-        "-" * 30
-        + "Supporting Elastic Width Mult: %s -> %s"
-        % (width_stage_list[: current_stage + 1], width_stage_list[: current_stage + 2])
-        + "-" * 30,
+        (
+            (
+                "-" * 30
+                + f"Supporting Elastic Width Mult: {width_stage_list[:current_stage + 1]} -> {width_stage_list[:current_stage + 2]}"
+            )
+            + "-" * 30
+        ),
         "valid",
     )
     validate_func_dict["width_mult_list"] = sorted({0, len(width_stage_list) - 1})

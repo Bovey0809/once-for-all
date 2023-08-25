@@ -69,14 +69,14 @@ def cross_entropy_with_label_smoothing(pred, target, label_smoothing=0.1):
 
 def clean_num_batch_tracked(net):
     for m in net.modules():
-        if isinstance(m, nn.BatchNorm2d) or isinstance(m, nn.BatchNorm1d):
+        if isinstance(m, (nn.BatchNorm2d, nn.BatchNorm1d)):
             if m.num_batches_tracked is not None:
                 m.num_batches_tracked.zero_()
 
 
 def rm_bn_from_net(net):
     for m in net.modules():
-        if isinstance(m, nn.BatchNorm2d) or isinstance(m, nn.BatchNorm1d):
+        if isinstance(m, (nn.BatchNorm2d, nn.BatchNorm1d)):
             m.forward = lambda x: x
 
 
@@ -88,8 +88,7 @@ def get_net_device(net):
 
 
 def count_parameters(net):
-    total_params = sum(p.numel() for p in net.parameters() if p.requires_grad)
-    return total_params
+    return sum(p.numel() for p in net.parameters() if p.requires_grad)
 
 
 def count_net_flops(net, data_shape=(1, 3, 224, 224)):
@@ -151,7 +150,7 @@ def measure_net_latency(
             if not clean:
                 print("Warmup %d: %.3f" % (i, used_time))
         outer_start_time = time.time()
-        for i in range(n_sample):
+        for _ in range(n_sample):
             net(images)
         total_time = (time.time() - outer_start_time) * 1e3  # ms
         measured_latency["sample"].append((total_time, n_sample))
@@ -159,13 +158,10 @@ def measure_net_latency(
 
 
 def get_net_info(net, input_shape=(3, 224, 224), measure_latency=None, print_info=True):
-    net_info = {}
     if isinstance(net, nn.DataParallel):
         net = net.module
 
-    # parameters
-    net_info["params"] = count_parameters(net) / 1e6
-
+    net_info = {"params": count_parameters(net) / 1e6}
     # flops
     net_info["flops"] = count_net_flops(net, [1] + list(input_shape)) / 1e6
 
@@ -175,7 +171,7 @@ def get_net_info(net, input_shape=(3, 224, 224), measure_latency=None, print_inf
         latency, measured_latency = measure_net_latency(
             net, l_type, fast=False, input_shape=input_shape
         )
-        net_info["%s latency" % l_type] = {"val": latency, "hist": measured_latency}
+        net_info[f"{l_type} latency"] = {"val": latency, "hist": measured_latency}
 
     if print_info:
         print(net)
@@ -184,7 +180,7 @@ def get_net_info(net, input_shape=(3, 224, 224), measure_latency=None, print_inf
         for l_type in latency_types:
             print(
                 "Estimated %s latency: %.3fms"
-                % (l_type, net_info["%s latency" % l_type]["val"])
+                % (l_type, net_info[f"{l_type} latency"]["val"])
             )
 
     return net_info
@@ -233,5 +229,5 @@ def calc_learning_rate(
     elif lr_schedule_type is None:
         lr = init_lr
     else:
-        raise ValueError("do not support: %s" % lr_schedule_type)
+        raise ValueError(f"do not support: {lr_schedule_type}")
     return lr

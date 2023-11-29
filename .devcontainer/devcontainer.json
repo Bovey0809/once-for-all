@@ -1,0 +1,21 @@
+{
+  "name": "Existing Dockerfile",
+  "build": {
+    "context": "..",
+    "dockerfile": "../Dockerfile"
+  },
+  "runArgs": ["--gpus", "all"],
+  "postCreateCommand": "pip freeze > requirements_docker.txt",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "charliermarsh.ruff",
+        "lfs.vscode-emacs-friendly",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "GitHub.copilot",
+        "redjue.git-commit-plugin"
+      ]
+    }
+  }
+}

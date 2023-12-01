@@ -6,6 +6,7 @@ from PIL import Image
 
 import torchvision.transforms.functional as F
 import torchvision.transforms as transforms
+from torchvision.transforms import InterpolationMode
 
 __all__ = ["MyRandomResizedCrop", "MyResizeRandomCrop", "MyResize"]
 
@@ -16,6 +17,7 @@ _pil_interpolation_to_str = {
     Image.LANCZOS: "PIL.Image.LANCZOS",
     Image.HAMMING: "PIL.Image.HAMMING",
     Image.BOX: "PIL.Image.BOX",
+    InterpolationMode.BILINEAR: "PIL.Image.BILINEAR",
 }
 
 
@@ -35,7 +37,7 @@ class MyRandomResizedCrop(transforms.RandomResizedCrop):
         size,
         scale=(0.08, 1.0),
         ratio=(3.0 / 4.0, 4.0 / 3.0),
-        interpolation=Image.BILINEAR,
+        interpolation=InterpolationMode.BILINEAR,
     ):
         if not isinstance(size, int):
             size = size[0]

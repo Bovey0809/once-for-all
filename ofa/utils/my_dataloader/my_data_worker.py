@@ -7,9 +7,10 @@ static methods.
 import torch
 import random
 import os
+import queue
 from collections import namedtuple
 # from torch._six import queue
-from torch.multiprocessing import Queue as queue
+from torch.multiprocessing import Queue as MPQueue
 from torch._utils import ExceptionWrapper
 from torch.utils.data._utils import (
     signal_handling,

@@ -3,7 +3,7 @@
 # International Conference on Learning Representations (ICLR), 2020.
 
 from ofa.utils import calc_learning_rate, build_optimizer
-from ofa.imagenet_classification.data_providers import ImagenetDataProvider
+from ofa.imagenet_classification.data_providers import ImagenetDataProvider, Cifar10DataProvider
 
 __all__ = ["RunConfig", "ImagenetRunConfig", "DistributedImageNetRunConfig"]
 
@@ -249,6 +249,8 @@ class DistributedImageNetRunConfig(ImagenetRunConfig):
         if self.__dict__.get("_data_provider", None) is None:
             if self.dataset == ImagenetDataProvider.name():
                 DataProviderClass = ImagenetDataProvider
+            elif self.dataset == 'cifar10':
+                DataProviderClass = Cifar10DataProvider
             else:
                 raise NotImplementedError
             self.__dict__["_data_provider"] = DataProviderClass(

@@ -124,7 +124,7 @@ args.width_mult_list = "1.0"
 args.dy_conv_scaling_mode = 1
 args.independent_distributed_sampling = False
 
-args.kd_ratio = 1.0
+args.kd_ratio = 0.0
 args.kd_type = "ce"
 
 
@@ -167,7 +167,7 @@ if __name__ == "__main__":
     args.train_batch_size = args.base_batch_size
     args.test_batch_size = args.base_batch_size * 4
     run_config = DistributedImageNetRunConfig(
-        **args.__dict__, num_replicas=num_gpus, rank=hvd.rank()
+        **args.__dict__, num_replicas=num_gpus, rank=hvd.rank(), dataset='cifar10'
     )
 
     # print run config information

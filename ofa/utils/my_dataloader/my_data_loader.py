@@ -800,7 +800,7 @@ class _MultiProcessingDataLoaderIter(_BaseDataLoaderIter):
 
         if self._pin_memory:
             self._pin_memory_thread_done_event = threading.Event()
-            self._data_queue = queue.Queue()
+            self._data_queue = queue()
             pin_memory_thread = threading.Thread(
                 target=_utils.pin_memory._pin_memory_loop,
                 args=(
@@ -808,6 +808,7 @@ class _MultiProcessingDataLoaderIter(_BaseDataLoaderIter):
                     self._data_queue,
                     torch.cuda.current_device(),
                     self._pin_memory_thread_done_event,
+                    "cuda"
                 ),
             )
             pin_memory_thread.daemon = True

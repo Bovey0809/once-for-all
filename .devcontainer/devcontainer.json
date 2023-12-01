@@ -4,8 +4,9 @@
     "context": "..",
     "dockerfile": "../Dockerfile"
   },
-  "runArgs": ["--gpus", "all"],
-  "postCreateCommand": "pip freeze > requirements_docker.txt",
+  "runArgs": ["--gpus", "all", "--shm-size=8g"],
+  "postCreateCommand": "pip freeze > requirements_docker.txt; pip install -v -e .; HOROVOD_GPU_OPERATIONS=NCCL pip install horovod[torch]; echo 'export PATH=$PATH:/home/myuser/.local/bin' >> ~/.bashrc && source ~/.bashrc",
+  "mounts": ["source=${localEnv:HOME}/.ssh,target=/home/user-name-goes-here/.ssh,type=bind,consistency=cached"],
   "customizations": {
     "vscode": {
       "extensions": [
@@ -17,5 +18,8 @@
         "redjue.git-commit-plugin"
       ]
     }
+  },
+  "containerEnv": {
+    "GIT_TERMINAL_PROMPT": "0",
   }
 }

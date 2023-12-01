@@ -202,7 +202,14 @@ class MobileNetV3(MyNetwork):
             else:
                 new_key = key
             current_state_dict[new_key] = state_dict[key]
-        super(MobileNetV3, self).load_state_dict(current_state_dict)
+        try:
+            super(MobileNetV3, self).load_state_dict(current_state_dict, strict=False)
+        except RuntimeError as e:
+            # remove fc in the last layer
+            if str(e).find("size mismatch") >= 0:
+                current_state_dict.pop("classifier.linear.weight")
+                current_state_dict.pop("classifier.linear.bias")
+                super(MobileNetV3, self).load_state_dict(current_state_dict, strict=False)
 
 
 class MobileNetV3Large(MobileNetV3):

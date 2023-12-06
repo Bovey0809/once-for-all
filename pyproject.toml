@@ -1,0 +1,27 @@
+[tool.isort]
+profile = "hug"
+src_paths = ["isort", "test"]
+
+[tool.poetry]
+name = "once-for-all"
+version = "0.1.0"
+description = "Once for all NAS."
+authors = ["Houbowei"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.8"
+requests = "^2.31.0"
+filelock = "^3.13.1"
+gdown = "^4.7.1"
+
+
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^3.5.0"
+yapf = "^0.40.2"
+black = "^23.11.0"
+isort = "^5.12.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

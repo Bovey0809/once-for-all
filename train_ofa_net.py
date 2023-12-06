@@ -39,6 +39,7 @@ parser.add_argument("--phase", type=int, default=1, choices=[1, 2])
 parser.add_argument("--resume", action="store_true")
 
 args = parser.parse_args()
+args.resume = True
 if args.task == "kernel":
     args.path = "exp/normal2kernel"
     args.dynamic_batch_size = 1
@@ -124,7 +125,7 @@ args.width_mult_list = "1.0"
 args.dy_conv_scaling_mode = 1
 args.independent_distributed_sampling = False
 
-args.kd_ratio = 0.0
+args.kd_ratio = 1.0
 args.kd_type = "ce"
 
 
